@@ -40,3 +40,31 @@ class TenantScopedModel(models.Model):
 
     class Meta:
         abstract = True
+
+class Permission(models.Model):
+    code = models.CharField(max_length=100, unique=True, help_text="Ex: catalog:read, inventory:write")
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.code
+
+class Role(models.Model):
+    name = models.CharField(max_length=100, unique=True, help_text="Ex: STORE_MANAGER, TENANT_ADMIN")
+    description = models.TextField(blank=True, null=True)
+    permissions = models.ManyToManyField(Permission, blank=True, related_name='roles')
+
+    def __str__(self):
+        return self.name
+
+from django.contrib.auth.models import AbstractUser
+
+class User(AbstractUser):
+    # UUID coming from Keycloak (the 'sub' claim)
+    external_reference = models.CharField(max_length=255, unique=True, blank=True, null=True, help_text="Keycloak UUID")
+    
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, blank=True, null=True, related_name='users')
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, blank=True, null=True, related_name='users')
+
+    def __str__(self):
+        return self.username or self.email or str(self.id)
