@@ -25,3 +25,11 @@ class EmployeeSerializer(serializers.ModelSerializer):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("Cet email est déjà utilisé.")
         return value
+
+from .models import Tenant
+
+class TenantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tenant
+        fields = ['id', 'name', 'default_tax_rate', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
