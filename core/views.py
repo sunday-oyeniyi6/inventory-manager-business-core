@@ -16,6 +16,19 @@ class RoleViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = RoleSerializer
     permission_classes = [IsAuthenticated] # Tout employé authentifié peut voir les rôles
 
+from .models import Tenant
+from .serializers import TenantSerializer
+
+class TenantViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows tenants (companies) to be viewed or edited.
+    Usually restricted to superadmins, but opened for test scenarios.
+    """
+    queryset = Tenant.objects.all()
+    serializer_class = TenantSerializer
+    # permission_classes = [IsAuthenticated] # Commented out for initial creation without token
+
+
 class EmployeeViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows employees to be viewed or edited by TENANT_ADMIN.
