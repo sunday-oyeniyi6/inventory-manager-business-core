@@ -17,7 +17,10 @@ keycloak_admin = KeycloakAdmin(
 REALM_NAME = "visiontech"
 CLIENT_ID = "inventory-manager-frontend"
 ADMIN_CLIENT_ID = "inventory-manager-backend"
-CLIENT_SECRET = "dummy-secret"
+CLIENT_SECRET = "6YaLd86mJLJIbmM1ecMm"
+
+# Wait a bit just in case
+time.sleep(1)
 
 print(f"Création du realm '{REALM_NAME}'...")
 try:
@@ -28,6 +31,7 @@ try:
         "registrationAllowed": False
     })
     print("✅ Realm créé avec succès.")
+    time.sleep(1)
 except KeycloakError as e:
     if "409" in str(e):
         print("ℹ️ Le Realm existe déjà.")
@@ -50,6 +54,7 @@ try:
     })
     print(f"✅ Client '{CLIENT_ID}' créé.")
 except KeycloakError as e:
+    print(f"DEBUG EXCEPTION: {e}")
     if "409" in str(e):
         print(f"ℹ️ Le client '{CLIENT_ID}' existe déjà.")
     else:
@@ -68,8 +73,15 @@ try:
     })
     print(f"✅ Client '{ADMIN_CLIENT_ID}' créé.")
 except KeycloakError as e:
+    print(f"DEBUG EXCEPTION: {e}")
     if "409" in str(e):
-        print(f"ℹ️ Le client '{ADMIN_CLIENT_ID}' existe déjà.")
+        print(f"ℹ️ Le client '{ADMIN_CLIENT_ID}' existe déjà. Mise à jour du secret...")
+        client_internal_id = keycloak_admin.get_client_id(ADMIN_CLIENT_ID)
+        keycloak_admin.update_client(client_internal_id, payload={
+            "secret": CLIENT_SECRET,
+            "serviceAccountsEnabled": True
+        })
+        print(f"✅ Secret du client '{ADMIN_CLIENT_ID}' mis à jour.")
     else:
         raise e
 
