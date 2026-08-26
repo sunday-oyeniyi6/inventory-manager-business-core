@@ -14,3 +14,17 @@ wheels/
 seed_roles.py
 setup_keycloak.py
 
+
+# env files
+.env*.local
+.env
+.env.development
+.env.production
+
+# Cursor IDE & Spec Kit (speckit) — config locale, ne pas versionner
+.cursor/
+**/.cursor/
+
+# Claude IA
+.claude
+**/.claude/
