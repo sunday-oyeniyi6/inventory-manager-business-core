@@ -1,18 +1,10 @@
 from rest_framework import viewsets
-from .models import Warehouse, StockItem, StockMovement, StockAlert
+from .models import StockItem, StockMovement, StockAlert
 from .serializers import (
-    WarehouseSerializer, 
     StockItemSerializer, 
     StockMovementSerializer, 
     StockAlertSerializer
 )
-
-class WarehouseViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows warehouses to be viewed or edited.
-    """
-    queryset = Warehouse.objects.all()
-    serializer_class = WarehouseSerializer
 
 class StockItemViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -22,8 +14,8 @@ class StockItemViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = StockItem.objects.all()
     serializer_class = StockItemSerializer
     
-    # Optional: add filters for warehouse and product
-    filterset_fields = ['warehouse', 'product']
+    # Optional: add filters for office and product
+    filterset_fields = ['office', 'product']
 
 class StockMovementViewSet(viewsets.ModelViewSet):
     """
@@ -32,7 +24,7 @@ class StockMovementViewSet(viewsets.ModelViewSet):
     queryset = StockMovement.objects.all()
     serializer_class = StockMovementSerializer
     
-    filterset_fields = ['warehouse', 'product', 'movement_type']
+    filterset_fields = ['office', 'product', 'movement_type']
     
     # Generally movements shouldn't be updated or deleted easily, 
     # but we'll leave it as ModelViewSet for now and restrict via permissions later if needed.
@@ -44,4 +36,4 @@ class StockAlertViewSet(viewsets.ModelViewSet):
     queryset = StockAlert.objects.all()
     serializer_class = StockAlertSerializer
     
-    filterset_fields = ['warehouse', 'product']
+    filterset_fields = ['office', 'product']

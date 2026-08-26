@@ -1,6 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
+from django.urls import reverse
 from unittest.mock import patch
 from .models import Tenant, Role, Permission, User
 from .permissions import HasPermission
@@ -61,10 +62,15 @@ class CoreSecurityTests(TestCase):
 
     @patch('core.authentication.jwt.get_unverified_claims')
     def test_jwt_authentication(self, mock_jwt):
+        # Setup tenant realm name to match token
+        self.tenant.keycloak_realm_name = "visiontech"
+        self.tenant.save()
+        
         # Simuler un token valide pour le manager
         mock_jwt.return_value = {
             "sub": "uuid-manager",
-            "email": "manager@visiontech.com"
+            "email": "manager@visiontech.com",
+            "iss": "http://localhost:8080/auth/realms/visiontech"
         }
         
         # Ce test est plus complexe à faire sans endpoint spécifique.
@@ -101,3 +107,28 @@ class CoreSecurityTests(TestCase):
         self.assertEqual(new_user.external_reference, "new-uuid-456")
         self.assertEqual(new_user.tenant, self.tenant)
         self.assertEqual(new_user.role, self.role_employee)
+
+    @patch('core.views.KeycloakAdmin')
+    def test_tenant_creation_api(self, MockKeycloakAdmin):
+        # On mock l'instance de KeycloakAdmin pour ne pas réellement appeler Keycloak
+        # The view instantiates KeycloakAdmin twice, we can just patch the class.
+        url = reverse('tenant-list')
+        data = {
+            "name": "Vision Tech",
+            "default_tax_rate": "18.00"
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Tenant.objects.count(), 2) # Including the one in setUp
+        
+    def test_office_creation_api(self):
+        url = reverse('office-list')
+        data = {
+            "name": "Entrepôt Central VISION TECH",
+            "location": "Zone Industrielle Tech, Bâtiment 4",
+            "tenant": self.tenant.id
+        }
+        # Office creation requires authentication
+        self.client.force_authenticate(user=self.user_manager)
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)

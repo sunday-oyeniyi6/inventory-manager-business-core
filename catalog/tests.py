@@ -71,7 +71,28 @@ class CatalogAPITests(APITestCase):
             'tenant': self.tenant.id
         }
         response = self.client.post(url, data, format='json')
-        # DRF doit renvoyer un 400 Bad Request
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         # Et le message d'erreur doit concerner le champ 'category'
         self.assertIn('category', response.data)
+
+    def test_create_brand_api(self):
+        url = reverse('brand-list')
+        data = {
+            "name": "Dell",
+            "website": "https://www.dell.com",
+            "tenant": self.tenant.id
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Brand.objects.count(), 1)
+
+    def test_create_category_api(self):
+        url = reverse('category-list')
+        data = {
+            "name": "Ordinateurs Portables",
+            "description": "PC Portables pour professionnels et gamers",
+            "tenant": self.tenant.id
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Category.objects.count(), 2) # Including the one from setUp

@@ -2,29 +2,16 @@ from django.db import models
 from core.models import TenantScopedModel
 from catalog.models import Product
 
-class Warehouse(TenantScopedModel):
-    name = models.CharField(max_length=255)
-    code = models.CharField(max_length=50)
-    location = models.TextField(blank=True, null=True)
-    is_active = models.BooleanField(default=True)
-
-    class Meta:
-        unique_together = ('tenant', 'code')
-
-    def __str__(self):
-        return f"[{self.code}] {self.name}"
-
-
 class StockItem(TenantScopedModel):
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='stock_items')
+    office = models.ForeignKey('core.Office', on_delete=models.CASCADE, related_name='stock_items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_items')
     quantity = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
     class Meta:
-        unique_together = ('tenant', 'warehouse', 'product')
+        unique_together = ('tenant', 'office', 'product')
 
     def __str__(self):
-        return f"{self.product.name} in {self.warehouse.name}: {self.quantity}"
+        return f"{self.product.name} in {self.office.name}: {self.quantity}"
 
 
 class StockMovement(TenantScopedModel):
@@ -33,7 +20,7 @@ class StockMovement(TenantScopedModel):
         OUT = 'OUT', 'Sortie'
         ADJUSTMENT = 'ADJUSTMENT', 'Ajustement'
 
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='movements')
+    office = models.ForeignKey('core.Office', on_delete=models.PROTECT, related_name='movements')
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='movements')
     movement_type = models.CharField(
         max_length=20, 
@@ -52,7 +39,7 @@ class StockMovement(TenantScopedModel):
             # Update StockItem quantity
             stock_item, created = StockItem.objects.get_or_create(
                 tenant=self.tenant,
-                warehouse=self.warehouse,
+                office=self.office,
                 product=self.product,
                 defaults={'quantity': 0}
             )
@@ -73,11 +60,11 @@ class StockMovement(TenantScopedModel):
 
 class StockAlert(TenantScopedModel):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='alerts')
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='alerts')
+    office = models.ForeignKey('core.Office', on_delete=models.CASCADE, related_name='alerts')
     minimum_quantity = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
     class Meta:
-        unique_together = ('tenant', 'product', 'warehouse')
+        unique_together = ('tenant', 'product', 'office')
 
     def __str__(self):
-        return f"Alert for {self.product.name} in {self.warehouse.name}: Min {self.minimum_quantity}"
+        return f"Alert for {self.product.name} in {self.office.name}: Min {self.minimum_quantity}"
