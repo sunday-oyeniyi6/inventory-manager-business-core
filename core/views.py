@@ -292,3 +292,36 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             external_reference=keycloak_user_id,
             tenant=tenant
         )
+
+from .models import Office
+from .serializers import OfficeSerializer
+
+class OfficeViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows offices (warehouses/stores) to be viewed or edited.
+    """
+    serializer_class = OfficeSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ['tenant']
+
+    def get_queryset(self):
+        # Un utilisateur ne voit que les offices de son Tenant
+        if getattr(self.request.user, 'tenant', None):
+            return Office.objects.filter(tenant=self.request.user.tenant)
+        # S'il n'y a pas de tenant associé, retourner tout ou rien selon le besoin (rien ici par sécurité)
+        return Office.objects.none()
+
+    def perform_create(self, serializer):
+        # Assigne automatiquement le tenant de l'utilisateur qui crée l'office s'il est manquant
+        tenant = getattr(self.request.user, 'tenant', None)
+        if 'tenant' in self.request.data:
+            from .models import Tenant
+            try:
+                tenant = Tenant.objects.get(id=self.request.data['tenant'])
+            except Tenant.DoesNotExist:
+                pass
+                
+        if not tenant:
+            raise serializers.ValidationError({"tenant": "Un tenant doit être spécifié."})
+            
+        serializer.save(tenant=tenant)

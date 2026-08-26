@@ -1,14 +1,9 @@
 from rest_framework import serializers
-from .models import Warehouse, StockItem, StockMovement, StockAlert
-
-class WarehouseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Warehouse
-        fields = '__all__'
+from .models import StockItem, StockMovement, StockAlert
 
 class StockItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
-    warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
+    office_name = serializers.CharField(source='office.name', read_only=True)
 
     class Meta:
         model = StockItem
@@ -17,7 +12,7 @@ class StockItemSerializer(serializers.ModelSerializer):
 
 class StockMovementSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
-    warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
+    office_name = serializers.CharField(source='office.name', read_only=True)
 
     class Meta:
         model = StockMovement
@@ -30,7 +25,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
         unless negative stock is explicitly allowed (not yet implemented).
         """
         if data.get('movement_type') == StockMovement.MovementType.OUT:
-            warehouse = data.get('warehouse')
+            office = data.get('office')
             product = data.get('product')
             quantity = data.get('quantity')
             tenant = data.get('tenant')
@@ -39,7 +34,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
             try:
                 stock_item = StockItem.objects.get(
                     tenant=tenant, 
-                    warehouse=warehouse, 
+                    office=office, 
                     product=product
                 )
                 if stock_item.quantity < quantity:
@@ -48,14 +43,14 @@ class StockMovementSerializer(serializers.ModelSerializer):
                     )
             except StockItem.DoesNotExist:
                 raise serializers.ValidationError(
-                    {"quantity": "No stock available for this product in this warehouse."}
+                    {"quantity": "No stock available for this product in this office."}
                 )
 
         return data
 
 class StockAlertSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
-    warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
+    office_name = serializers.CharField(source='office.name', read_only=True)
 
     class Meta:
         model = StockAlert

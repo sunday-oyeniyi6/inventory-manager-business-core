@@ -2,9 +2,9 @@ from django.test import TestCase
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
-from core.models import Tenant
+from core.models import Tenant, Office
 from catalog.models import Product, Category
-from .models import Warehouse, StockItem, StockMovement, StockAlert
+from .models import StockItem, StockMovement, StockAlert
 
 from decimal import Decimal
 
@@ -19,21 +19,21 @@ class InventoryModelTests(TestCase):
             base_price=Decimal('1000.00'),
             tenant=self.tenant
         )
-        self.warehouse = Warehouse.objects.create(
-            name="Main Warehouse", 
-            code="MAIN", 
+        self.office = Office.objects.create(
+            name="Main Office", 
+            location="Zone 1", 
             tenant=self.tenant
         )
 
-    def test_create_warehouse(self):
-        self.assertEqual(self.warehouse.code, "MAIN")
-        self.assertEqual(str(self.warehouse), "[MAIN] Main Warehouse")
+    def test_create_office(self):
+        self.assertEqual(self.office.name, "Main Office")
+        self.assertEqual(str(self.office), "Main Office (Test Tenant)")
 
     def test_stock_movement_in_updates_stock_item(self):
         # Initial IN movement
         StockMovement.objects.create(
             tenant=self.tenant,
-            warehouse=self.warehouse,
+            office=self.office,
             product=self.product,
             movement_type=StockMovement.MovementType.IN,
             quantity=Decimal('50.00'),
@@ -41,14 +41,14 @@ class InventoryModelTests(TestCase):
         )
         
         # Check that StockItem was created and quantity is correct
-        stock_item = StockItem.objects.get(tenant=self.tenant, warehouse=self.warehouse, product=self.product)
+        stock_item = StockItem.objects.get(tenant=self.tenant, office=self.office, product=self.product)
         self.assertEqual(stock_item.quantity, Decimal('50.00'))
 
     def test_stock_movement_out_updates_stock_item(self):
         # Add stock first
         StockMovement.objects.create(
             tenant=self.tenant,
-            warehouse=self.warehouse,
+            office=self.office,
             product=self.product,
             movement_type=StockMovement.MovementType.IN,
             quantity=Decimal('50.00'),
@@ -58,7 +58,7 @@ class InventoryModelTests(TestCase):
         # Out movement
         StockMovement.objects.create(
             tenant=self.tenant,
-            warehouse=self.warehouse,
+            office=self.office,
             product=self.product,
             movement_type=StockMovement.MovementType.OUT,
             quantity=Decimal('20.00'),
@@ -66,7 +66,7 @@ class InventoryModelTests(TestCase):
         )
         
         # Check remaining stock
-        stock_item = StockItem.objects.get(tenant=self.tenant, warehouse=self.warehouse, product=self.product)
+        stock_item = StockItem.objects.get(tenant=self.tenant, office=self.office, product=self.product)
         self.assertEqual(stock_item.quantity, Decimal('30.00'))
 
 class InventoryAPITests(APITestCase):
@@ -80,16 +80,16 @@ class InventoryAPITests(APITestCase):
             category=self.category,
             tenant=self.tenant
         )
-        self.warehouse = Warehouse.objects.create(
-            name="API Warehouse", 
-            code="API-WH", 
+        self.office = Office.objects.create(
+            name="API Office", 
+            location="API-LOC", 
             tenant=self.tenant
         )
 
     def test_create_movement_api(self):
         url = reverse('stockmovement-list')
         data = {
-            'warehouse': self.warehouse.id,
+            'office': self.office.id,
             'product': self.product.id,
             'movement_type': 'IN',
             'quantity': '100.00',
@@ -109,13 +109,48 @@ class InventoryAPITests(APITestCase):
     def test_out_movement_insufficient_stock_should_fail(self):
         url = reverse('stockmovement-list')
         data = {
-            'warehouse': self.warehouse.id,
+            'office': self.office.id,
             'product': self.product.id,
             'movement_type': 'OUT',
             'quantity': '50.00',
             'tenant': self.tenant.id
         }
         response = self.client.post(url, data, format='json')
-        # Should fail because there is no stock
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('quantity', response.data)
+
+    def test_out_movement_success_api(self):
+        # First IN movement
+        url = reverse('stockmovement-list')
+        self.client.post(url, {
+            'office': self.office.id,
+            'product': self.product.id,
+            'movement_type': 'IN',
+            'quantity': '10.00',
+            'tenant': self.tenant.id
+        }, format='json')
+        
+        # Then OUT movement
+        response = self.client.post(url, {
+            'office': self.office.id,
+            'product': self.product.id,
+            'movement_type': 'OUT',
+            'quantity': '3.00',
+            'tenant': self.tenant.id
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        stock_item = StockItem.objects.get(office=self.office, product=self.product)
+        self.assertEqual(stock_item.quantity, 7.00)
+
+    def test_create_stock_alert_api(self):
+        url = reverse('stockalert-list')
+        data = {
+            "minimum_quantity": "5.00",
+            "product": self.product.id,
+            "office": self.office.id,
+            "tenant": self.tenant.id
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(StockAlert.objects.count(), 1)
