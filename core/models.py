@@ -6,6 +6,12 @@ class Tenant(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     default_tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Taux de taxe par défaut en pourcentage (ex: 18.00 pour 18%)")
+    
+    # Keycloak fields
+    keycloak_realm_name = models.CharField(max_length=255, unique=True, blank=True, null=True, help_text="Nom du realm dans Keycloak")
+    keycloak_client_id = models.CharField(max_length=255, blank=True, null=True, help_text="Client ID du backend dans le realm du tenant")
+    encrypted_keycloak_client_secret = models.BinaryField(blank=True, null=True, help_text="Secret chiffré du client backend")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

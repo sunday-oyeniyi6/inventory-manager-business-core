@@ -163,7 +163,6 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'core.authentication.KeycloakJWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication', # Optional, useful for browsable API if needed
     ],
 }
 
@@ -172,4 +171,12 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API documentation for the business core module of Inventory Manager.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'SECURITY': [{'bearerAuth': []}],
+    'SECURITY_SCHEMES': {
+        'bearerAuth': {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'JWT',
+        }
+    }
 }

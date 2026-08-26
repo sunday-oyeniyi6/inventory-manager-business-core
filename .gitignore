@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+.env
+
+# Local seed scripts
+seed_roles.py
+setup_keycloak.py
+

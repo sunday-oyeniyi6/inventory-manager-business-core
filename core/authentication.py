@@ -29,29 +29,61 @@ class KeycloakJWTAuthentication(BaseAuthentication):
         except JWTError:
             raise AuthenticationFailed('Token invalide')
 
-        # Extract Keycloak user ID
+        # Extract Keycloak user ID and Issuer
         user_uuid = payload.get('sub')
+        iss = payload.get('iss')
+        
         if not user_uuid:
             raise AuthenticationFailed('Token ne contient pas d\'identifiant utilisateur (sub)')
+            
+        if not iss:
+            raise AuthenticationFailed('Token ne contient pas l\'émetteur (iss)')
+            
+        # The issuer is typically http://domain:port/realms/realm_name
+        realm_name = iss.split('/')[-1]
 
-        # In this simplified mapping, we expect the tenant ID and role to be passed in custom claims
-        # or we fetch them from Keycloak via Admin API. But since we store the Role and Tenant in DB,
-        # we can just find the user by external_reference.
-        
         try:
             user = User.objects.get(external_reference=user_uuid)
+            # Verify the user belongs to the correct realm
+            if user.tenant and user.tenant.keycloak_realm_name != realm_name:
+                raise AuthenticationFailed(f'Conflit de tenant: le token provient du realm {realm_name} mais l\'utilisateur appartient à {user.tenant.keycloak_realm_name}')
         except User.DoesNotExist:
             # Synchronisation automatique (auto-provisioning) lors de la première connexion
-            # Optionnel: on pourrait extraire l'email et le nom du payload
             email = payload.get('email', '')
             username = payload.get('preferred_username', user_uuid)
+            
+            # Find the tenant associated with this realm
+            try:
+                tenant = Tenant.objects.get(keycloak_realm_name=realm_name)
+            except Tenant.DoesNotExist:
+                # Si le realm master est utilisé pour un superadmin, on autorise sans tenant
+                if realm_name == 'master' or realm_name == os.getenv('KEYCLOAK_REALM', 'master'):
+                    tenant = None
+                else:
+                    raise AuthenticationFailed(f"Aucun tenant local ne correspond au realm '{realm_name}'")
             
             user = User.objects.create(
                 external_reference=user_uuid,
                 username=username,
                 email=email,
+                tenant=tenant
             )
-            # Normalement le tenant_id est injecté dans le JWT ou assigné à l'avance 
-            # par l'API de création d'employé.
             
         return (user, token)
+
+try:
+    from drf_spectacular.extensions import OpenApiAuthenticationExtension
+    
+    class KeycloakJWTScheme(OpenApiAuthenticationExtension):
+        target_class = 'core.authentication.KeycloakJWTAuthentication'
+        name = 'jwtAuth'
+
+        def get_security_definition(self, auto_schema):
+            return {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+except ImportError:
+    pass
+

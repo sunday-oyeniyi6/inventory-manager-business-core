@@ -85,20 +85,20 @@ except KeycloakError as e:
     else:
         raise e
 
-# Grant 'realm-management' -> 'manage-users' role to the Service Account
-print("Attribution des droits 'manage-users' au client Django...")
+# Grant 'realm-management' -> 'realm-admin' role to the Service Account
+print("Attribution des droits 'realm-admin' au client Django...")
 client_id_internal = keycloak_admin.get_client_id(ADMIN_CLIENT_ID)
 service_account_user = keycloak_admin.get_client_service_account_user(client_id_internal)
 
 # Get the management client
 realm_management_client_id = keycloak_admin.get_client_id(f"{REALM_NAME}-realm")
-manage_users_role = keycloak_admin.get_client_role(realm_management_client_id, "manage-users")
+realm_admin_role = keycloak_admin.get_client_role(realm_management_client_id, "realm-admin")
 
 # Assign role
 keycloak_admin.assign_client_role(
     user_id=service_account_user['id'],
     client_id=realm_management_client_id,
-    roles=[manage_users_role]
+    roles=[realm_admin_role]
 )
 print("✅ Droits attribués avec succès.")
 
