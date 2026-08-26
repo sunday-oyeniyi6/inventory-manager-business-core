@@ -154,3 +154,76 @@ class InventoryAPITests(APITestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(StockAlert.objects.count(), 1)
+
+    # --- StockItem CRUD (ReadOnly) ---
+    def test_list_stock_items_api(self):
+        StockItem.objects.create(office=self.office, product=self.product, quantity=50.00, tenant=self.tenant)
+        url = reverse('stockitem-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_retrieve_stock_item_api(self):
+        item = StockItem.objects.create(office=self.office, product=self.product, quantity=50.00, tenant=self.tenant)
+        url = reverse('stockitem-detail', args=[item.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(float(response.data['quantity']), 50.00)
+
+    # --- StockMovement CRUD ---
+    def test_list_stock_movements_api(self):
+        StockMovement.objects.create(office=self.office, product=self.product, movement_type='IN', quantity=10, tenant=self.tenant)
+        url = reverse('stockmovement-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_retrieve_stock_movement_api(self):
+        mov = StockMovement.objects.create(office=self.office, product=self.product, movement_type='IN', quantity=10, tenant=self.tenant)
+        url = reverse('stockmovement-detail', args=[mov.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_update_stock_movement_api(self):
+        mov = StockMovement.objects.create(office=self.office, product=self.product, movement_type='IN', quantity=10, tenant=self.tenant)
+        url = reverse('stockmovement-detail', args=[mov.id])
+        data = {'notes': 'Updated note'}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mov.refresh_from_db()
+        self.assertEqual(mov.notes, 'Updated note')
+
+    def test_delete_stock_movement_api(self):
+        mov = StockMovement.objects.create(office=self.office, product=self.product, movement_type='IN', quantity=10, tenant=self.tenant)
+        url = reverse('stockmovement-detail', args=[mov.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    # --- StockAlert CRUD ---
+    def test_list_stock_alerts_api(self):
+        StockAlert.objects.create(office=self.office, product=self.product, minimum_quantity=5, tenant=self.tenant)
+        url = reverse('stockalert-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_retrieve_stock_alert_api(self):
+        alert = StockAlert.objects.create(office=self.office, product=self.product, minimum_quantity=5, tenant=self.tenant)
+        url = reverse('stockalert-detail', args=[alert.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_update_stock_alert_api(self):
+        alert = StockAlert.objects.create(office=self.office, product=self.product, minimum_quantity=5, tenant=self.tenant)
+        url = reverse('stockalert-detail', args=[alert.id])
+        data = {'minimum_quantity': '10.00'}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        alert.refresh_from_db()
+        self.assertEqual(alert.minimum_quantity, 10.00)
+
+    def test_delete_stock_alert_api(self):
+        alert = StockAlert.objects.create(office=self.office, product=self.product, minimum_quantity=5, tenant=self.tenant)
+        url = reverse('stockalert-detail', args=[alert.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)

@@ -132,3 +132,129 @@ class CoreSecurityTests(TestCase):
         self.client.force_authenticate(user=self.user_manager)
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    # --- Role CRUD ---
+    def test_list_roles_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        url = reverse('role-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch('core.views.KeycloakAdmin')
+    def test_create_role_api(self, MockKeycloakAdmin):
+        self.client.force_authenticate(user=self.user_manager)
+        url = reverse('role-list')
+        response = self.client.post(url, {'name': 'TEST_ROLE'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Role.objects.filter(name='TEST_ROLE').count(), 1)
+
+    @patch('core.views.KeycloakAdmin')
+    def test_update_role_api(self, MockKeycloakAdmin):
+        self.client.force_authenticate(user=self.user_manager)
+        url = reverse('role-detail', args=[self.role_manager.id])
+        response = self.client.patch(url, {'description': 'Updated'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.role_manager.refresh_from_db()
+        self.assertEqual(self.role_manager.description, 'Updated')
+
+    def test_delete_role_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        role = Role.objects.create(name="TO_DELETE")
+        url = reverse('role-detail', args=[role.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    # --- Tenant CRUD ---
+    def test_list_tenants_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        url = reverse('tenant-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_retrieve_tenant_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        url = reverse('tenant-detail', args=[self.tenant.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_update_tenant_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        url = reverse('tenant-detail', args=[self.tenant.id])
+        response = self.client.patch(url, {'default_tax_rate': '20.00'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.tenant.refresh_from_db()
+        self.assertEqual(self.tenant.default_tax_rate, 20.00)
+
+    def test_delete_tenant_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        t = Tenant.objects.create(name="Temp")
+        url = reverse('tenant-detail', args=[t.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    # --- Employee CRUD ---
+    def test_list_employees_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        url = reverse('employee-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_retrieve_employee_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        url = reverse('employee-detail', args=[self.user_employee.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['username'], 'employee')
+
+    def test_update_employee_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        url = reverse('employee-detail', args=[self.user_employee.id])
+        response = self.client.patch(url, {'first_name': 'John'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user_employee.refresh_from_db()
+        self.assertEqual(self.user_employee.first_name, 'John')
+
+    def test_delete_employee_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        emp = User.objects.create(username="temp_emp", tenant=self.tenant)
+        url = reverse('employee-detail', args=[emp.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    # --- Office CRUD ---
+    def test_list_offices_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        from .models import Office
+        Office.objects.create(name="Office1", tenant=self.tenant)
+        url = reverse('office-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_retrieve_office_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        from .models import Office
+        office = Office.objects.create(name="Office1", tenant=self.tenant)
+        url = reverse('office-detail', args=[office.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], "Office1")
+
+    def test_update_office_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        from .models import Office
+        office = Office.objects.create(name="Office1", tenant=self.tenant)
+        url = reverse('office-detail', args=[office.id])
+        response = self.client.patch(url, {'location': 'Paris'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        office.refresh_from_db()
+        self.assertEqual(office.location, 'Paris')
+
+    def test_delete_office_api(self):
+        self.client.force_authenticate(user=self.user_manager)
+        from .models import Office
+        office = Office.objects.create(name="Office1", tenant=self.tenant)
+        url = reverse('office-detail', args=[office.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
