@@ -1,4 +1,5 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, serializers
+from rest_framework.permissions import IsAuthenticated
 from .models import StockItem, StockMovement, StockAlert
 from .serializers import (
     StockItemSerializer, 
@@ -6,7 +7,29 @@ from .serializers import (
     StockAlertSerializer
 )
 
-class StockItemViewSet(viewsets.ReadOnlyModelViewSet):
+class TenantViewSetMixin:
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self.request.user, 'tenant', None):
+            return self.queryset.filter(tenant=self.request.user.tenant)
+        return self.queryset.none()
+
+    def perform_create(self, serializer):
+        tenant = getattr(self.request.user, 'tenant', None)
+        if 'tenant' in self.request.data:
+            from core.models import Tenant
+            try:
+                tenant = Tenant.objects.get(id=self.request.data['tenant'])
+            except Tenant.DoesNotExist:
+                pass
+        
+        if not tenant:
+            raise serializers.ValidationError({"tenant": "Un tenant doit être spécifié."})
+            
+        serializer.save(tenant=tenant)
+
+class StockItemViewSet(TenantViewSetMixin, viewsets.ReadOnlyModelViewSet):
     """
     API endpoint that allows stock items to be viewed.
     Stock items are automatically updated via Stock Movements and should not be created/edited directly.
@@ -17,7 +40,7 @@ class StockItemViewSet(viewsets.ReadOnlyModelViewSet):
     # Optional: add filters for office and product
     filterset_fields = ['office', 'product']
 
-class StockMovementViewSet(viewsets.ModelViewSet):
+class StockMovementViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     API endpoint that allows stock movements to be viewed or created.
     """
@@ -29,7 +52,7 @@ class StockMovementViewSet(viewsets.ModelViewSet):
     # Generally movements shouldn't be updated or deleted easily, 
     # but we'll leave it as ModelViewSet for now and restrict via permissions later if needed.
 
-class StockAlertViewSet(viewsets.ModelViewSet):
+class StockAlertViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     API endpoint that allows stock alerts to be viewed or edited.
     """

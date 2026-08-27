@@ -28,3 +28,6 @@ setup_keycloak.py
 # Claude IA
 .claude
 **/.claude/
+.agents/
+CLAUDE.md
+
