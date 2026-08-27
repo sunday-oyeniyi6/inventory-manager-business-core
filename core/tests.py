@@ -112,6 +112,7 @@ class CoreSecurityTests(TestCase):
     def test_tenant_creation_api(self, MockKeycloakAdmin):
         # On mock l'instance de KeycloakAdmin pour ne pas réellement appeler Keycloak
         # The view instantiates KeycloakAdmin twice, we can just patch the class.
+        self.client.force_authenticate(user=self.user_manager)
         url = reverse('tenant-list')
         data = {
             "name": "Vision Tech",
@@ -258,3 +259,48 @@ class CoreSecurityTests(TestCase):
         url = reverse('office-detail', args=[office.id])
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+
+class PublicTenantListViewTest(TestCase):
+    """Tests for the public tenant API endpoint (no auth required)."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.tenant = Tenant.objects.create(
+            name="TestCompany",
+            keycloak_realm_name="testcompany"
+        )
+        self.tenant2 = Tenant.objects.create(
+            name="AnotherCorp",
+            keycloak_realm_name="anothercorp"
+        )
+
+    def test_list_tenants_without_authentication(self):
+        """GET /api/v1/core/tenants/public/ should return 200 without auth."""
+        response = self.client.get('/api/v1/core/tenants/public/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_response_contains_only_name(self):
+        """Response should expose only tenant names, no sensitive fields."""
+        response = self.client.get('/api/v1/core/tenants/public/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        tenant_data = response.data[0]
+        self.assertIn('name', tenant_data)
+        self.assertNotIn('id', tenant_data)
+        self.assertNotIn('keycloak_realm_name', tenant_data)
+        self.assertNotIn('keycloak_client_id', tenant_data)
+        self.assertNotIn('default_tax_rate', tenant_data)
+        self.assertNotIn('encrypted_keycloak_client_secret', tenant_data)
+
+    def test_returns_all_tenant_names(self):
+        """Should return all tenant names."""
+        response = self.client.get('/api/v1/core/tenants/public/')
+        names = [t['name'] for t in response.data]
+        self.assertIn('TestCompany', names)
+        self.assertIn('AnotherCorp', names)
+
+    def test_protected_tenant_endpoint_requires_auth(self):
+        """GET /api/v1/core/tenants/ should return 403 without auth."""
+        response = self.client.get('/api/v1/core/tenants/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

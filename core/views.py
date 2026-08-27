@@ -80,6 +80,7 @@ class TenantViewSet(viewsets.ModelViewSet):
     queryset = Tenant.objects.all()
     serializer_class = TenantSerializer
     # permission_classes = [IsAuthenticated] # Commented out for initial creation without token
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         tenant_name = serializer.validated_data.get('name')
@@ -196,6 +197,27 @@ class TenantViewSet(viewsets.ModelViewSet):
                 )
         except KeycloakError as e:
             raise serializers.ValidationError({"keycloak_error": str(e)})
+
+
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import AllowAny
+
+class PublicTenantSerializer(serializers.Serializer):
+    """Serializer that exposes only tenant names for public consumption."""
+    name = serializers.CharField()
+
+class PublicTenantListView(ListAPIView):
+    """Public endpoint to list tenant names for login realm resolution.
+    
+    No authentication required. Returns only tenant names to avoid
+    exposing sensitive configuration like Keycloak realm names or client IDs.
+    """
+    serializer_class = PublicTenantSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []  # No auth required
+
+    def get_queryset(self):
+        return Tenant.objects.all().only('name')
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):

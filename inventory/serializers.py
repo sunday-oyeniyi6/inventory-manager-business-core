@@ -8,7 +8,7 @@ class StockItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = StockItem
         fields = '__all__'
-        read_only_fields = ('quantity',) # Quantities should only be updated via movements
+        read_only_fields = ('quantity', 'tenant') # Quantities should only be updated via movements
 
 class StockMovementSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
@@ -17,7 +17,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
     class Meta:
         model = StockMovement
         fields = '__all__'
-        read_only_fields = ('date',)
+        read_only_fields = ('date', 'tenant')
 
     def validate(self, data):
         """
@@ -28,7 +28,9 @@ class StockMovementSerializer(serializers.ModelSerializer):
             office = data.get('office')
             product = data.get('product')
             quantity = data.get('quantity')
-            tenant = data.get('tenant')
+            
+            # Since tenant is read_only, it's not in data. Fetch it from office
+            tenant = office.tenant if office else None
 
             # Look up current stock
             try:
@@ -55,3 +57,4 @@ class StockAlertSerializer(serializers.ModelSerializer):
     class Meta:
         model = StockAlert
         fields = '__all__'
+        read_only_fields = ('tenant',)
