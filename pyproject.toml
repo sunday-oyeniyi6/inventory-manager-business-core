@@ -1,10 +1,10 @@
 [project]
 name = "inventory-manager-business-core"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.1"
+description = "Inventory Manager Business Core"
 readme = "README.md"
 authors = [
-    { name = "Sunday OYENIYI", email = "sunday.oyeniyi6@gmail.com" }
+    { name = "TECHXAF", email = "[EMAIL_ADDRESS]" }
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -13,11 +13,13 @@ dependencies = [
     "django-cors-headers>=4.9.0",
     "djangorestframework>=3.18.0",
     "drf-spectacular>=0.30.0",
+    "gunicorn>=23.0.0",
     "pillow>=12.3.0",
     "psycopg[binary]>=3.3.4",
     "python-dotenv>=1.2.3",
     "python-jose>=3.5.0",
     "python-keycloak>=7.1.1",
+    "whitenoise[brotli]>=6.6.0",
 ]
 
 [project.scripts]
